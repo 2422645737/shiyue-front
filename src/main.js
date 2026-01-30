@@ -15,7 +15,7 @@ Vue.use(ElementUI);
 Vue.use(mavonEditor);
 Vue.use(VueRouter);
 Vue.prototype.$http = axios
-axios.defaults.baseURL = 'http://localhost:8080'
+axios.defaults.baseURL = '/'
 
 
 
@@ -35,7 +35,7 @@ Vue.prototype.getTime = function (){
   let hour = date.getHours(); // 时
   let minutes = date.getMinutes(); // 分
   let seconds = date.getSeconds() //秒
-  // 给一位数的数据前面加 “0”
+  // 给一位数的数据前面加 "0"
   if (month >= 1 && month <= 9) {
     month = "0" + month;
   }
@@ -53,6 +53,9 @@ Vue.prototype.getTime = function (){
   }
   return year + "-" + month + "-" + day + " " + hour + sign2 + minutes;
 }
+
+// 移除全局混入，避免导致组件模板出现多个根元素的问题
+// 改为在需要的组件中手动添加文件分隔线
 new Vue({
   axios,
   store,

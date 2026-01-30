@@ -1,8 +1,8 @@
 <template>
 <div>
     <el-card class="box-card">
-        <blog-card v-show="article.type === 'blog'" :article="article"></blog-card>
-        <talk-card v-show="article.type === 'talk'" :article="article"></talk-card>
+        <blog-card :article="article"></blog-card>
+        <!-- <talk-card v-show="article.type === 'talk'" :article="article"></talk-card> -->
     </el-card>
 </div>
 </template>

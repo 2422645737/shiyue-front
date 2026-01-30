@@ -8,7 +8,7 @@
             <div class="all">
                 <div v-for="(item,index) in this.tags" @click="getTags(item)" :key="index" class="items">
                     <span>
-                        {{item}}
+                        {{item.tagName}}
                     </span>
                 </div>
             </div>
@@ -21,9 +21,11 @@ export default {
     name: "ArticleTagsPanel",
     mounted() {
         //获取所有标签
-        this.$http.get('article/article/tags').then(
+        this.$http.get('tag/findAllTags').then(
             resp => {
-                this.tags = resp.data.data.tags;
+                this.tags = resp.data.data;
+                console.log(resp.data);
+                
             }
         );
     },

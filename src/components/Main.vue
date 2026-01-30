@@ -27,6 +27,7 @@ export default {
     methods: {
         getPage(current, size) {
             let type = 0;   //没有查询类型
+
             if(this.$route.query.class_id !== undefined){
                 type = 1;     //按照文章类型查询
             }
@@ -38,15 +39,18 @@ export default {
             }else{
                 //全部文章
             }
-            let url = "article/article/articles?";
-            if(type === 1)url += 'class_id=' + this.$route.query.class_id + '&';
+            
+            type = 1
+            let url = "article/findByClassId?";
+            // if(type === 1)url += 'classId=' + this.$route.query.class_id + '&';
+            if(type === 1)url += 'classId=1&'
             else if(type === 2)url += 'title=' + this.$route.query.title + '&';
             else if(type === 3)url += 'tag=' + this.$route.query.tag + '&';
             url += 'current='+ current + '&size=' + size;
 
             this.$http.get(url).then(
                 response => {
-                    this.articles = response.data.data.articles.records;
+                    this.articles = response.data.data;
                     this.pageInfo.total = response.data.data.articles.total;
                 }
             )

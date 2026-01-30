@@ -8,7 +8,7 @@
             <div class="all">
                 <div v-for="(item,index) in this.classData" @click="getClass(item)" :key="index" class="items">
                     <span>
-                        {{item.class_name}}（{{item.count}}）
+                        {{item.className}}（{{item.count}}）
                     </span>
                 </div>
             </div>
@@ -20,9 +20,9 @@
 export default {
     name: "ArticleClassPanel",
     created() {
-        this.$http.get("class/class/count").then(
+        this.$http.get("class/findAllClass").then(
             response => {
-                this.classData = response.data.data.class;
+                this.classData = response.data.data;
             },
         )
     },

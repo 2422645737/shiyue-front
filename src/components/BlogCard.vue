@@ -6,7 +6,7 @@
     <hr>
     <div class="tag" v-show="article.type === 'blog'">
         <!-- 文章标签 -->
-        <el-tag type="info" v-for="(item,index) in article.tags" :key="index">{{item}}</el-tag>
+        <el-tag type="info" v-for="(item,index) in article.tagList" :key="index">{{item.tagName}}</el-tag>
     </div>
     <div class="cover">
         <!-- 封面 -->
@@ -15,7 +15,7 @@
     </div>
     <div class="footer" v-if="article">
         <!-- 底部横幅内容 -->
-        <div class="footer_time">{{article.publish_time}}</div>
+        <div class="footer_time">{{article.createTime}}</div>
         <div class="fill"></div>
         <div class="footer_count" v-if="article.quantity !== undefined">
             <img src="../../public/images/article_icon/count.png" alt="">
@@ -40,10 +40,11 @@ export default {
     mounted() {},
     methods:{
         toRead(){
+            console.log(this.article);
             let url = this.$router.resolve({
                 path:'read',
                 query:{
-                    id:this.article.id
+                    id:this.article.articleId
                 }});
             window.open(url.href,'_blank')
         }

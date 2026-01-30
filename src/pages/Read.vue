@@ -36,9 +36,9 @@ export default {
     },
     mounted() {
         //页面创建时请求文章数据
-        this.$http.get("article/article/" + this.$route.query.id).then(
+        this.$http.get("article/findById?articleId=" + this.$route.query.id).then(
             response => {
-                this.article = response.data.data.article;
+                this.article = response.data.data;
                 if(this.article === null){
                     this.$router.push({
                         name:'not_found'
