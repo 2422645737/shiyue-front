@@ -9,6 +9,7 @@ import WriteBlog from "@/admin/pages/WriteBlog";
 import NotFound from "@/pages/NotFound";
 import Music from "@/pages/Music";
 export default new VueRouter({
+    mode:'history',
     routes:[
         {
             // 主路由
