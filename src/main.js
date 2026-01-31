@@ -15,7 +15,7 @@ Vue.use(ElementUI);
 Vue.use(mavonEditor);
 Vue.use(VueRouter);
 Vue.prototype.$http = axios
-axios.defaults.baseURL = '/'
+axios.defaults.baseURL = '/api'
 
 
 

@@ -6,10 +6,13 @@ module.exports = defineConfig({
   devServer: {
     compress: false,
     proxy: {
-       '/': {
-        target: 'http://localhost:8081', // 后端地址
+       '/api': {
+        target: 'http://localhost:8081',
         changeOrigin: true,
-        ws: false
+        ws: false,
+        pathRewrite: {
+          '^/api': ''
+        }
       }
     }
   }
