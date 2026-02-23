@@ -32,6 +32,9 @@
             <img src="../../public/images/read.png" alt="">
             <p>阅读</p>
         </div>
+        <div class="todo-button" @click="to_todo">
+            <p>待办</p>
+        </div>
         <div class="head-image" @click="to_user_home">
              <img :src="this.user_avatar" alt="" class="avatar">
         </div>
@@ -75,6 +78,9 @@ export default {
             //阅读
             console.log("to_home");
         },
+        to_todo(){
+            this.$router.push({path:'/todo'})
+        },
         to_user_home(){
             //头像
             console.log("to_home");
@@ -103,7 +109,7 @@ export default {
 }
 .buttons > div{
     height: 100%;
-    width: 16.69%;
+    flex: 1 1 0;
     display: flex;
     justify-content: center;
     align-items: center;

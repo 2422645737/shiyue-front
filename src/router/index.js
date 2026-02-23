@@ -8,6 +8,7 @@ import Login from "@/pages/Login"
 import WriteBlog from "@/admin/pages/WriteBlog";
 import NotFound from "@/pages/NotFound";
 import Music from "@/pages/Music";
+import Todo from "@/pages/Todo";
 export default new VueRouter({
     mode:'history',
     routes:[
@@ -22,6 +23,11 @@ export default new VueRouter({
                     component:Main
                 },
             ]
+        },
+        {
+            name:'todo',
+            path:'/todo',
+            component:Todo
         },
         {
             name:'music',

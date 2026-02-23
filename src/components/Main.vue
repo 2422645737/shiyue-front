@@ -51,7 +51,7 @@ export default {
             this.$http.get(url).then(
                 response => {
                     this.articles = response.data.data;
-                    this.pageInfo.total = response.data.data.articles.total;
+                    // this.pageInfo.total = response.data.data.articles.total;
                 }
             )
         },
