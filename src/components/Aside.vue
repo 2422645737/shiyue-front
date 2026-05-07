@@ -17,18 +17,15 @@
             </el-button>
         </div>
     </el-card>
-    <article-class-panel></article-class-panel>
     <article-tags-panel></article-tags-panel>
 </div>
 </template>
 
 <script>
-import ArticleClassPanel from "@/components/ArticleClassPanel";
 import ArticleTagsPanel from "@/components/ArticleTagsPanel";
 export default {
     name: 'Aside',
     components:{
-        ArticleClassPanel,
         ArticleTagsPanel
     },
     methods: {

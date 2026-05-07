@@ -1,8 +1,21 @@
 <template>
 <div class="main">
-    <Card v-for="(item,index) in articles" :key="index" :article="item"></Card>
-    <el-pagination background layout="prev, pager, next" :total="pageInfo.total" @current-change="current_change">
-    </el-pagination>
+    <template v-if="hasArticles">
+        <Card v-for="(item,index) in articles" :key="index" :article="item"></Card>
+        <el-pagination
+            v-show="showPagination"
+            background
+            layout="prev, pager, next"
+            :total="pageInfo.total"
+            :page-size="pageInfo.size"
+            :current-page="pageInfo.current"
+            @current-change="current_change"
+        >
+        </el-pagination>
+    </template>
+    <template v-else>
+        <el-empty :description="emptyText"></el-empty>
+    </template>
 </div>
 </template>
 
@@ -21,48 +34,94 @@ export default {
             ]
         }
     },
+    computed: {
+        hasArticles() {
+            return Array.isArray(this.articles) && this.articles.length > 0;
+        },
+        showPagination() {
+            return this.pageInfo.total > this.pageInfo.size;
+        },
+        emptyText() {
+            const query = this.$route.query || {};
+            if (query.tagId !== undefined && query.tagId !== null && query.tagId !== "") {
+                return "该标签下暂无文章";
+            }
+            if (query.tag_id !== undefined && query.tag_id !== null && query.tag_id !== "") {
+                return "该标签下暂无文章";
+            }
+            if (query.class_id !== undefined && query.class_id !== null && query.class_id !== "") {
+                return "该分类下暂无文章";
+            }
+            return "暂无文章";
+        }
+    },
     components: {
         Card
     },
     methods: {
-        getPage(current, size) {
-            let type = 0;   //没有查询类型
+        getPage(current, size, queryOverride) {
+            const query = queryOverride || this.$route.query || {};
+            const classId = query.class_id;
+            const tagId = query.tagId ?? query.tag_id ?? query.tagID;
 
-            if(this.$route.query.class_id !== undefined){
-                type = 1;     //按照文章类型查询
+            let url = "";
+            if (tagId !== undefined && tagId !== null && tagId !== "") {
+                url =
+                    "tag/findArticlesByTagId?" +
+                    "tagId=" + encodeURIComponent(tagId) +
+                    "&pageNum=" + encodeURIComponent(current) +
+                    "&pageSize=" + encodeURIComponent(size);
+            } else {
+                url = "article/findByClassId?";
+                if (classId !== undefined && classId !== null && classId !== "") {
+                    url += "classId=" + encodeURIComponent(classId) + "&";
+                }
+                url += "current=" + current + "&size=" + size;
             }
-            else if(this.$route.query.title !== undefined){
-                type = 2;   //按照文章标题查询
-            }
-            else if(this.$route.query.tag !== undefined){
-                type = 3;   //按照文章标签查询
-            }else{
-                //全部文章
-            }
-            
-            type = 1
-            let url = "article/findByClassId?";
-            // if(type === 1)url += 'classId=' + this.$route.query.class_id + '&';
-            if(type === 1)url += 'classId=1&'
-            else if(type === 2)url += 'title=' + this.$route.query.title + '&';
-            else if(type === 3)url += 'tag=' + this.$route.query.tag + '&';
-            url += 'current='+ current + '&size=' + size;
 
             this.$http.get(url).then(
                 response => {
-                    this.articles = response.data.data;
-                    // this.pageInfo.total = response.data.data.articles.total;
+                    const payload = response?.data?.data;
+                    let list = [];
+                    let total = 0;
+
+                    if (Array.isArray(payload)) {
+                        list = payload;
+                        total = payload.length;
+                    } else if (payload && typeof payload === "object") {
+                        if (Array.isArray(payload.records)) list = payload.records;
+                        else if (Array.isArray(payload.list)) list = payload.list;
+                        else if (Array.isArray(payload.articles)) list = payload.articles;
+                        else if (payload.articles && Array.isArray(payload.articles.records)) list = payload.articles.records;
+
+                        total =
+                            Number(payload.total) ||
+                            Number(payload?.articles?.total) ||
+                            list.length;
+
+                        if (payload.pageNum !== undefined && payload.pageNum !== null && payload.pageNum !== "") {
+                            this.pageInfo.current = Number(payload.pageNum) || current;
+                        }
+                        if (payload.pageSize !== undefined && payload.pageSize !== null && payload.pageSize !== "") {
+                            this.pageInfo.size = Number(payload.pageSize) || size;
+                        }
+                    }
+
+                    this.articles = list;
+                    this.pageInfo.total = total;
                 }
             )
         },
         current_change(val) { //页面跳转事件
+            this.pageInfo.current = val;
             this.getPage(val,this.pageInfo.size);
         }
 
     },
     beforeRouteUpdate(to,from,next){
         next();
-        this.getPage(this.pageInfo.current,this.pageInfo.size);
+        this.pageInfo.current = 1;
+        this.getPage(this.pageInfo.current,this.pageInfo.size, to.query);
     },
     mounted() {
         this.getPage(this.pageInfo.current,this.pageInfo.size)

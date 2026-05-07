@@ -7,7 +7,7 @@
         <div class="sidebar-header">
           <h2 class="sidebar-title">
             <i class="el-icon-folder"></i>
-            文档管理
+            分类导航
           </h2>
         </div>
         <div class="sidebar-content">
@@ -227,15 +227,17 @@ export default {
             tags: [],
             // 加载状态
             loading: {
+                categories: false,
                 tags: false
             },
             // 错误状态
             error: {
+                categories: '',
                 tags: ''
             },
             // 数据缓存
             cachedData: {
-                tags: null
+                tagsByClass: {}
             },
             // 对话框状态
             add_class_dialog:false,         //控制添加分类的窗口是否显示
@@ -293,6 +295,8 @@ export default {
         // 新建文章
         createNewArticle() {
             this.closeContextMenu();
+            const currentSelectedClassId = this.selectedCatalogId;
+            const currentSelectedClass = this.article_class.find(item => String(item.id) === String(currentSelectedClassId));
             // 重置文章数据
             this.article = {
                 content:'',
@@ -307,10 +311,9 @@ export default {
             };
             // 清空标签
             this.tags = [];
-            // 如果选中了目录，设置目录id
-            if (this.selectedNode) {
-                this.selectedCatalogId = this.selectedNode.id;
-                this.article.catalogId = this.selectedNode.id;
+            if (currentSelectedClass) {
+                this.article.class_name = currentSelectedClass.className;
+                this.fetchTags(currentSelectedClass.id);
             }
         },
         
@@ -355,7 +358,7 @@ export default {
                         this.$message.success('标签添加成功！');
                         this.add_tag_dialog = false;
                         // 重新获取标签数据
-                        this.fetchTags();
+                        this.fetchTags(this.getSelectedClassId(), { force: true });
                     },
                     error => {
                         this.$message.error('标签添加失败，请稍后重试');
@@ -366,6 +369,13 @@ export default {
         },
         set_class(value){      //分类选择事件
             this.article.class_name = value;
+            const selected = this.article_class.find(cls => cls.className === value);
+            if (selected) {
+                this.selectedCatalogId = selected.id;
+                this.fetchTags(selected.id);
+            } else {
+                this.fetchTags(null);
+            }
         },
         // 保存文章（通用方法）
         async saveArticle(status) {
@@ -495,40 +505,68 @@ export default {
         
         // 获取分类数据
         async fetchCategories() {
+            this.loading.categories = true;
             this.error.categories = '';
+            const previousSelectedId = this.selectedCatalogId;
+            const previousSelectedName = this.article.class_name;
             
             try {
                 const resp = await this.$http.get('class/findAllClass');
-                if (resp.data && resp.data.data && resp.data.data.length > 0) {
+                const list = (resp.data && resp.data.data) ? resp.data.data : [];
+                if (list.length > 0) {
                     // 按count字段排序
-                    const sortedCategories = [...resp.data.data].sort((a, b) => (b.count || 0) - (a.count || 0));
+                    const sortedCategories = [...list].sort((a, b) => (b.count || 0) - (a.count || 0));
                     // 保留所有分类数据
                     this.article_class = sortedCategories.map(item => ({
                         id: item.id,
                         className: item.className
                     }));
-                    // 自动选择频率最高的分类作为默认选项
-                    if (sortedCategories.length > 0) {
-                        this.article.class_name = sortedCategories[0].className;
+                    this.catalogTree = this.article_class.map(item => ({
+                        id: item.id,
+                        label: item.className,
+                        className: item.className
+                    }));
+                    let selectedClass = null;
+                    if (previousSelectedId !== undefined && previousSelectedId !== null && previousSelectedId !== '') {
+                        selectedClass = this.article_class.find(item => String(item.id) === String(previousSelectedId));
+                    }
+                    if (!selectedClass && previousSelectedName) {
+                        selectedClass = this.article_class.find(item => item.className === previousSelectedName);
+                    }
+                    if (!selectedClass) {
+                        selectedClass = this.article_class[0];
+                    }
+                    if (selectedClass) {
+                        this.article.class_name = selectedClass.className;
+                        this.selectedCatalogId = selectedClass.id;
+                        await this.fetchTags(selectedClass.id);
                     }
                 } else {
                     // 无分类数据
                     this.article_class = [];
                     this.article.class_name = '';
+                    this.catalogTree = [];
+                    this.selectedCatalogId = null;
                 }
             } catch (error) {
                 console.error('获取分类失败:', error);
-                this.error.categories = '';
+                this.error.categories = '获取分类数据失败，请稍后重试';
                 this.article_class = [];
                 this.article.class_name = '';
+                this.catalogTree = [];
+                this.selectedCatalogId = null;
+                this.$message.error('获取分类数据失败');
+            } finally {
+                this.loading.categories = false;
             }
         },
         
         // 获取标签数据
-        async fetchTags() {
-            // 检查缓存
-            if (this.cachedData.tags) {
-                this.options = this.cachedData.tags;
+        async fetchTags(classId, { force = false } = {}) {
+            const resolvedClassId = classId !== undefined ? classId : this.getSelectedClassId();
+            const cacheKey = (resolvedClassId === undefined || resolvedClassId === null || resolvedClassId === '') ? '__all__' : String(resolvedClassId);
+            if (!force && this.cachedData.tagsByClass && this.cachedData.tagsByClass[cacheKey]) {
+                this.options = this.cachedData.tagsByClass[cacheKey];
                 return;
             }
             
@@ -536,16 +574,20 @@ export default {
             this.error.tags = '';
             
             try {
-                const resp = await this.$http.get('tag/findAllTags');
+                let url = 'tag/findAllTags';
+                if (resolvedClassId !== undefined && resolvedClassId !== null && resolvedClassId !== '') {
+                    url += '?classId=' + encodeURIComponent(resolvedClassId);
+                }
+                const resp = await this.$http.get(url);
                 if (resp.data && resp.data.data) {
                     // 格式化数据为下拉框需要的格式
                     this.options = resp.data.data.map(item => ({
-                        id: item.id,
+                        id: item.id ?? item.tagId ?? item.tag_id ?? item.tagID,
                         value: item.tagName,
                         label: item.tagName
                     }));
                     // 缓存数据
-                    this.cachedData.tags = this.options;
+                    this.$set(this.cachedData.tagsByClass, cacheKey, this.options);
                 }
             } catch (error) {
                 console.error('获取标签失败:', error);
@@ -556,147 +598,16 @@ export default {
             }
         },
         
-        // 初始化目录树数据
-        initCatalogTree() {
-            // 模拟的多级目录数据
-            this.catalogTree = [
-                {
-                    id: 1,
-                    label: '前端开发',
-                    children: [
-                        {
-                            id: 2,
-                            label: 'HTML/CSS',
-                            children: [
-                                {
-                                    id: 3,
-                                    label: 'HTML基础'
-                                },
-                                {
-                                    id: 4,
-                                    label: 'CSS进阶'
-                                }
-                            ]
-                        },
-                        {
-                            id: 5,
-                            label: 'JavaScript',
-                            children: [
-                                {
-                                    id: 6,
-                                    label: 'ES6+'
-                                },
-                                {
-                                    id: 7,
-                                    label: '异步编程'
-                                }
-                            ]
-                        },
-                        {
-                            id: 8,
-                            label: '前端框架',
-                            children: [
-                                {
-                                    id: 9,
-                                    label: 'Vue'
-                                },
-                                {
-                                    id: 10,
-                                    label: 'React'
-                                },
-                                {
-                                    id: 11,
-                                    label: 'Angular'
-                                }
-                            ]
-                        }
-                    ]
-                },
-                {
-                    id: 12,
-                    label: '后端开发',
-                    children: [
-                        {
-                            id: 13,
-                            label: 'Java',
-                            children: [
-                                {
-                                    id: 14,
-                                    label: 'Spring Boot'
-                                },
-                                {
-                                    id: 15,
-                                    label: 'MyBatis'
-                                }
-                            ]
-                        },
-                        {
-                            id: 16,
-                            label: 'Python',
-                            children: [
-                                {
-                                    id: 17,
-                                    label: 'Django'
-                                },
-                                {
-                                    id: 18,
-                                    label: 'Flask'
-                                }
-                            ]
-                        }
-                    ]
-                },
-                {
-                    id: 19,
-                    label: '数据库',
-                    children: [
-                        {
-                            id: 20,
-                            label: 'MySQL'
-                        },
-                        {
-                            id: 21,
-                            label: 'PostgreSQL'
-                        },
-                        {
-                            id: 22,
-                            label: 'MongoDB'
-                        }
-                    ]
-                },
-                {
-                    id: 23,
-                    label: '其他',
-                    children: [
-                        {
-                            id: 24,
-                            label: 'DevOps'
-                        },
-                        {
-                            id: 25,
-                            label: '面试经验'
-                        },
-                        {
-                            id: 26,
-                            label: '技术随笔'
-                        }
-                    ]
-                }
-            ];
-        },
-        
         // 处理目录选择
         handleCatalogSelect(data) {
             this.selectedCatalogId = data.id;
-            this.article.catalogId = data.id;
+            this.article.class_name = data.className || data.label || '';
+            this.fetchTags(data.id);
         },
     },
     mounted() {
         //页面创建的时候，获取分类和标签数据
         this.fetchCategories();
-        this.fetchTags();
-        // 初始化目录树数据
-        this.initCatalogTree();
     }
 }
 </script>
@@ -870,9 +781,9 @@ export default {
 
 /* 操作按钮 */
 .action-button {
-  min-width: 120px;
-  font-size: 16px;
-  padding: 12px 24px;
+  min-width: 112px;
+  font-size: 14px;
+  padding: 10px 18px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1028,9 +939,9 @@ export default {
 
 /* 内联按钮 */
 .inline-button {
-  padding: 6px 16px;
+  padding: 6px 14px;
   font-size: 14px;
-  min-width: 80px;
+  min-width: 72px;
 }
 
 /* 统一按钮样式 */
@@ -1038,12 +949,12 @@ export default {
   border-radius: 8px;
   font-weight: 600;
   transition: all 0.3s ease;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 8px 18px rgba(17, 24, 39, 0.10);
 }
 
 .custom-button:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 14px 28px rgba(17, 24, 39, 0.14);
 }
 
 /* 响应式设计 */
